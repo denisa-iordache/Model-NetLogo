@@ -1,0 +1,190 @@
+globals [ gaze_emanate ] ;variabila globala pentru a afisa gazele emanate
+
+breed [ masini car ]  ;agentii tip masina
+breed [camioane truck] ;agentii tip camion
+breed [ poluare cloud ] ;agentul nor, poluarea
+breed[something somethings] ;agentii decor: casa, copaci,etc
+
+to set-env ;procedura care se executa cand apasam "Setup"
+  clear-all ;curatam cadrul
+  set-default-shape masini "car"   ;setare agenti
+  set-default-shape camioane "truck"
+  set-default-shape poluare "cloud"
+  set-background
+  set-turtles
+  setup-peisaj
+  setup-soare
+  reset-ticks
+end
+
+
+to go ;procedura care se executa cand apasam "Crestere poluare"
+  if count turtles with [shape = "cloud"] = 960 [user-message (word
+      "Orasul este suprapoluat. Simularea s-a oprit.")stop] ;conditia de oprire si mesajul afisat
+  move-turtles1
+  gain-gaze_emanate
+  tick
+end
+
+to go2 ;procedura care se executa cand apasam "Crestere si scadere poluare"
+   if count turtles with [shape = "cloud"] = 960 [user-message (word
+      "Orasul este suprapoluat. Simularea s-a oprit.")stop] ;conditia de oprire si mesajul afisat
+  move-turtles2
+  gain-gaze_emanate
+  tick
+end
+
+
+; procedura recursiva esentiala pentru ca atunci cand apasam "Initializare", sa nu apara doua autoturisme in acelasi loc
+to separate-cars
+  if any? other turtles-here [
+    fd 1
+    separate-cars
+  ]
+end
+
+to set-turtles ;procedura de setare a agentilor
+  create-turtles Nr_masini [
+  set xcor random-pxcor  ;pozitionare aleatoare pe axa ox
+  set ycor -16  ;pozitionare axa oy
+  set heading 90 ;directia spre dreapta
+  set shape "car" ;forma
+  ]
+  create-turtles Nr_camioane [
+  set xcor random-pxcor
+  set ycor -12
+  set heading 90
+  set shape "truck"
+  ]
+
+  create-turtles Poluare1 [
+  setxy random-xcor random-ycor
+  set color grey
+    set size 1.5
+  set shape "cloud"
+  ]
+
+end
+
+to set-background  ;setarea cadrului, culori, strada
+  ask patches [
+   set pcolor 88
+  if (pycor < -6) and (pycor > -12) [ set pcolor 68 ]
+  if (pycor < -10) and (pycor > -18) [ set pcolor 8 - random-float 0.4 ]
+  ]
+  draw-a-line -16.5 white 0
+  draw-a-line -15.5 white 0.5
+  draw-a-line -13.5 white 0
+  draw-a-line -14 white 0
+  draw-a-line -12.5 white 0.5
+  draw-a-line -11 white 0
+end
+
+to draw-a-line [ y line-color gap ] ;desenarea liniilor strazii
+  create-turtles 1 [
+    setxy random-xcor y
+    hide-turtle
+    set color line-color
+    set heading 90
+    repeat world-width [
+      pen-up
+      forward gap
+      pen-down
+      forward (1 - gap)
+    ]
+    die
+  ]
+end
+
+to setup-peisaj ;setarea peisajului deasupra strazii
+ ask patches with [pcolor = 68] [
+    if count neighbors with [pcolor = 68] = 8 and not any? turtles in-radius 2[
+         sprout-something 1
+      [
+          set shape one-of ["tree" "house" "flower" "house colonial" "plant" "house bungalow"]
+          if shape = "tree" [set color green]
+          ifelse shape = "flower" [ set size 1] [set size 2]
+          stamp
+        ]
+  ]]
+ ask something [die]
+end
+
+to setup-soare ;setarea soarelui
+  set-default-shape turtles "sun"
+  create-turtles 1
+  [
+   set color yellow
+   set xcor 13
+   set ycor 13
+   set size 5
+   stamp
+ if shape = "sun" [die]
+  ]
+end
+
+to move-turtles1 ;procedura de miscare a masinilor, prima varianta
+  ask turtles [
+  fd 1
+  separate-cars
+   ]
+  pollute-more
+end
+
+to move-turtles2 ;procedura de miscare a masinilor, a doua varianta
+  ask turtles [
+  fd 1
+  separate-cars
+   ]
+  pollute-less
+end
+
+
+to pollute-more   ;aceasta procedura face ca dupa un timp fiecare miscare a masinii sa mai produca un nor de poluare
+ create-turtles 1 [ ;aceasta procedura face ca dupa un timp fiecare miscare a masinii sa mai produca un nor de poluare
+    set color grey
+    set size 1.5
+   set shape "cloud"
+    setxy random-xcor random ycor
+    lt 45 fd 1 ]
+  ask turtles with [shape = "car"] [set gaze_emanate (gaze_emanate + 0.5) ] ;cu cat se misca mai mult, cu atat polueaza mai mult
+  ask turtles with [shape = "truck"] [set gaze_emanate (gaze_emanate + 0.5) ]
+end
+
+
+to pollute-less   ;aceasta procedura face ca, dupa un timp, fiecare miscare a masinii sa mai scada un nor de poluare
+ create-turtles 1 [
+    set color grey
+    set size 1.5
+   set shape "cloud"
+    setxy random-xcor random ycor
+    lt 45 fd 1 ]
+  ask turtles with [shape = "car"] [set gaze_emanate (gaze_emanate + 0.5) ] ;cu cat se misca mai mult, cu atat polueaza mai mult
+  ask turtles with [shape = "truck"] [set gaze_emanate (gaze_emanate + 0.5) ]
+    if ticks > 400  [  ;conditie ca la un numar de tick-uri, sa inceapa sa scada poluarea
+        ask turtles with [shape = "cloud"]  [ kill ]  ;apelez procedura de scadere a poluarii
+    ask turtles with [shape = "car"] [set gaze_emanate (gaze_emanate - 2.5) ] ; scad gazele emanate la acest moment
+  ask turtles with [shape = "truck"] [set gaze_emanate (gaze_emanate - 2.5) ]
+        reset-ticks ;resetarea tick-urilor
+         tick  ]
+end
+
+to kill ;procedura care diminueaza poluarea
+   ask one-of turtles with [shape = "cloud"] [ die ]
+end
+
+to gain-gaze_emanate  ;procedura care afiseaza emisiile de gaze
+  ask turtles with [shape = "car"] [
+    set label gaze_emanate
+    ifelse display-gaze_emanate?
+    [set label gaze_emanate]
+    [set label ""]
+  ]
+  ask turtles with [shape = "truck"]
+  [
+    set label gaze_emanate
+    ifelse display-gaze_emanate?
+    [set label gaze_emanate]
+    [set label ""]
+  ]
+end
